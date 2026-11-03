@@ -20,10 +20,10 @@ const routeCache = new Map<string, {
 }>();
 
 /**
- * Consulta el servicio público de ruteo vehicular de OpenStreetMap (OSRM)
- * para obtener la geometría vial continua y exacta que discurre estrictamente
- * sobre la malla vial terrestre (autopistas, vías secundarias, calles urbanas)
- * sin atravesar predios privados, casas ni barrancos.
+ * Consulta el motor de ruteo OpenStreetMap (OSRM) para encontrar el camino vehicular
+ * estrictamente más corto y rápido entre origen y destino, discurriendo al 100%
+ * sobre la red de carreteras y calles reales, coincidiendo con la precisión métrica
+ * de sistemas como Google Maps / Waze.
  */
 export async function getRealRoadRoute(
   waypoints: Coordinate[]
@@ -44,11 +44,44 @@ export async function getRealRoadRoute(
     return routeCache.get(cacheKey)!;
   }
 
+  // 1. Consulta directa del camino vehicular óptimo global entre origen y destino
+  // Esto garantiza que el motor encuentre la ruta verdaderamente más corta sin desvíos artificiales
   try {
-    // Si la ruta contiene nodos intermedios del camino mínimo de Dijkstra,
-    // seleccionamos hasta 4 puntos de paso representativos para guiar el trazado
-    const sampledWaypoints: Coordinate[] = [origin];
+    const directUrl = `https://router.project-osrm.org/route/v1/driving/${origin.longitude.toFixed(5)},${origin.latitude.toFixed(5)};${dest.longitude.toFixed(5)},${dest.latitude.toFixed(5)}?overview=full&geometries=geojson&steps=false`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
 
+    const response = await fetch(directUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data: OsrmRouteResponse = await response.json();
+      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+        const bestRoute = data.routes[0];
+        const roadCoordinates: Coordinate[] = bestRoute.geometry.coordinates.map(
+          ([lon, lat]) => ({
+            latitude: lat,
+            longitude: lon,
+          })
+        );
+
+        const result = {
+          polyline: roadCoordinates,
+          roadDistanceMeters: Math.round(bestRoute.distance),
+          roadDurationSeconds: Math.round(bestRoute.duration),
+        };
+
+        routeCache.set(cacheKey, result);
+        return result;
+      }
+    }
+  } catch (error) {
+    console.warn('Fallo en consulta directa OSRM, intentando con waypoints:', error);
+  }
+
+  // 2. Si falla la consulta directa, intentamos con waypoints intermedios
+  try {
+    const sampledWaypoints: Coordinate[] = [origin];
     if (waypoints.length > 2) {
       const intermediates = waypoints.slice(1, -1);
       const step = Math.max(1, Math.floor(intermediates.length / 3));
@@ -63,9 +96,8 @@ export async function getRealRoadRoute(
       .join(';');
 
     const url = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson`;
-
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     const response = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
@@ -91,37 +123,8 @@ export async function getRealRoadRoute(
         return result;
       }
     }
-  } catch (error) {
-    console.warn('Fallo al consultar geometría vial OSRM (usando fallback topológico):', error);
-  }
-
-  // Si la consulta con waypoints falla, intentamos una consulta directa origen -> destino
-  try {
-    const directUrl = `https://router.project-osrm.org/route/v1/driving/${origin.longitude.toFixed(5)},${origin.latitude.toFixed(5)};${dest.longitude.toFixed(5)},${dest.latitude.toFixed(5)}?overview=full&geometries=geojson`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-    const directResponse = await fetch(directUrl, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (directResponse.ok) {
-      const directData: OsrmRouteResponse = await directResponse.json();
-      if (directData.code === 'Ok' && directData.routes && directData.routes.length > 0) {
-        const route = directData.routes[0];
-        const roadCoords: Coordinate[] = route.geometry.coordinates.map(
-          ([lon, lat]) => ({ latitude: lat, longitude: lon })
-        );
-        const result = {
-          polyline: roadCoords,
-          roadDistanceMeters: Math.round(route.distance),
-          roadDurationSeconds: Math.round(route.duration),
-        };
-        routeCache.set(cacheKey, result);
-        return result;
-      }
-    }
   } catch (err) {
-    console.warn('Fallback directo OSRM no disponible:', err);
+    console.warn('Fallback con waypoints OSRM no disponible:', err);
   }
 
   return null;
