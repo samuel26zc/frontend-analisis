@@ -18,8 +18,10 @@ import {
   ShortestPathResult,
   CompareDijkstraResult,
   TimeMatrixData,
+  Coordinate,
 } from '../types';
 import { placesApi, routesApi } from '../services/api';
+import { getRealRoadRoute } from '../services/roadRoutingService';
 import { MetricCard } from '../components/common/MetricCard';
 import { Badge } from '../components/common/Badge';
 import { Alert } from '../components/common/Alert';
@@ -36,6 +38,9 @@ export const RoutesView: React.FC = () => {
   // Results & Loading
   const [singleResult, setSingleResult] = useState<ShortestPathResult | null>(null);
   const [compareResult, setCompareResult] = useState<CompareDijkstraResult | null>(null);
+  const [roadPolyline, setRoadPolyline] = useState<Coordinate[]>([]);
+  const [roadStats, setRoadStats] = useState<{ roadDistanceMeters: number; roadDurationSeconds: number } | null>(null);
+  const [isRoadSnapping, setIsRoadSnapping] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,6 +89,8 @@ export const RoutesView: React.FC = () => {
     setError(null);
 
     try {
+      let resolvedSingle: ShortestPathResult;
+
       if (compareMode) {
         const [compRes, singleRes] = await Promise.all([
           routesApi.compareDijkstra(originId, destinationId),
@@ -91,10 +98,34 @@ export const RoutesView: React.FC = () => {
         ]);
         setCompareResult(compRes);
         setSingleResult(singleRes);
+        resolvedSingle = singleRes;
       } else {
         const res = await routesApi.computeShortestPath(originId, destinationId, version);
         setSingleResult(res);
         setCompareResult(null);
+        resolvedSingle = res;
+      }
+
+      // Obtener trazado continuo sobre carreteras terrestres reales (OpenStreetMap / OSRM)
+      // para evitar que la ruta atraviese casas o zonas no transitables
+      setIsRoadSnapping(true);
+      try {
+        const roadRes = await getRealRoadRoute(resolvedSingle.polyline);
+        if (roadRes && roadRes.polyline.length > 0) {
+          setRoadPolyline(roadRes.polyline);
+          setRoadStats({
+            roadDistanceMeters: roadRes.roadDistanceMeters,
+            roadDurationSeconds: roadRes.roadDurationSeconds,
+          });
+        } else {
+          setRoadPolyline(resolvedSingle.polyline);
+          setRoadStats(null);
+        }
+      } catch (err) {
+        setRoadPolyline(resolvedSingle.polyline);
+        setRoadStats(null);
+      } finally {
+        setIsRoadSnapping(false);
       }
     } catch (err: any) {
       console.error('Error calculando ruta:', err);
@@ -274,15 +305,31 @@ export const RoutesView: React.FC = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Tiempo de Viaje"
-              value={`${singleResult.travelTimeMinutes.toFixed(1)} min`}
-              subtitle={`(${(singleResult.travelTimeSeconds / 3600).toFixed(2)} h)`}
+              value={
+                roadStats
+                  ? `${(roadStats.roadDurationSeconds / 60).toFixed(1)} min`
+                  : `${singleResult.travelTimeMinutes.toFixed(1)} min`
+              }
+              subtitle={
+                roadStats
+                  ? `Conducción terrestre real (${(roadStats.roadDurationSeconds / 3600).toFixed(2)} h) • Dijkstra: ${singleResult.travelTimeMinutes.toFixed(1)}m`
+                  : `Dijkstra: ${(singleResult.travelTimeSeconds / 3600).toFixed(2)} h`
+              }
               icon={<Clock className="w-5 h-5 text-terracota-700" />}
               variant="terracotta"
             />
             <MetricCard
               title="Distancia Terrestre"
-              value={`${singleResult.distanceKilometers.toFixed(2)} km`}
-              subtitle={`${singleResult.distanceMeters.toLocaleString()} metros`}
+              value={
+                roadStats
+                  ? `${(roadStats.roadDistanceMeters / 1000).toFixed(2)} km`
+                  : `${singleResult.distanceKilometers.toFixed(2)} km`
+              }
+              subtitle={
+                roadStats
+                  ? `Vía vehicular OSM (${roadStats.roadDistanceMeters.toLocaleString()} m)`
+                  : `${singleResult.distanceMeters.toLocaleString()} m en grafo vial`
+              }
               icon={<Navigation className="w-5 h-5 text-cordillera-700" />}
               variant="emerald"
             />
@@ -385,14 +432,26 @@ export const RoutesView: React.FC = () => {
 
           {/* Interactive Map & Route Polyline */}
           <div className="bg-white rounded-3xl p-6 lg:p-8 border border-cafe-200 shadow-md space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <h3 className="text-lg font-serif font-bold text-cafe-900">
                   Visualización Cartográfica del Trayecto
                 </h3>
-                <p className="text-xs text-cafe-600 mt-0.5">
-                  Ruta proyectada sobre la red vial OpenStreetMap del Quindío ({singleResult.polyline.length} puntos de trazado).
-                </p>
+                <div className="text-xs text-cafe-600 mt-1">
+                  {roadStats ? (
+                    <span className="text-cordillera-700 font-semibold inline-flex items-center gap-1.5 bg-cordillera-50 px-2.5 py-1 rounded-md border border-cordillera-200">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-cordillera-600 shrink-0" />
+                      Trazado vial terrestre activo ({roadPolyline.length} puntos de malla vehicular OSM). 100% sobre carreteras sin atravesar predios ni casas.
+                    </span>
+                  ) : isRoadSnapping ? (
+                    <span className="text-amber-700 font-semibold inline-flex items-center gap-1.5 animate-pulse bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600 shrink-0" />
+                      Ajustando geometría sobre carreteras terrestres reales de OpenStreetMap...
+                    </span>
+                  ) : (
+                    <span>Ruta proyectada sobre la red vial ({singleResult.polyline.length} puntos de trazado).</span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-3 text-xs">
                 <span className="inline-flex items-center gap-1.5">
@@ -404,8 +463,8 @@ export const RoutesView: React.FC = () => {
                   Destino
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="w-4 h-1 bg-terracota-500 rounded"></span>
-                  Trayecto Mínimo
+                  <span className="w-4 h-1.5 bg-amber-500 rounded border border-white"></span>
+                  Vía Terrestre
                 </span>
               </div>
             </div>
@@ -413,7 +472,7 @@ export const RoutesView: React.FC = () => {
             <QuindioMap
               places={places}
               selectedPlaceId={originId}
-              routePolyline={singleResult.polyline}
+              routePolyline={roadPolyline.length > 0 ? roadPolyline : singleResult.polyline}
               className="h-[460px] rounded-2xl overflow-hidden border border-cafe-200 shadow-inner"
             />
           </div>

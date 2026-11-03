@@ -27,7 +27,7 @@ export const QuindioMap: React.FC<QuindioMapProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const currentBaseLayerRef = useRef<L.LayerGroup | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
-  const routeLayerRef = useRef<L.Polyline | null>(null);
+  const routeLayerRef = useRef<L.Layer | null>(null);
   const hullLayerRef = useRef<L.Polygon | null>(null);
 
   const [activeStyle, setActiveStyle] = useState<MapTileStyle>(defaultTileStyle);
@@ -250,7 +250,7 @@ export const QuindioMap: React.FC<QuindioMapProps> = ({
     }
   }, [selectedPlaceId]);
 
-  // Actualizar polyline de caminos mínimos
+  // Actualizar trazado vehicular sobre vías terrestres
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
@@ -261,15 +261,28 @@ export const QuindioMap: React.FC<QuindioMapProps> = ({
 
     if (routePolyline && routePolyline.length > 1) {
       const latlngs: L.LatLngExpression[] = routePolyline.map((c) => [c.latitude, c.longitude]);
-      const polyline = L.polyline(latlngs, {
-        color: '#EA580C', // Naranja Terracota brillante de alto contraste
-        weight: 5.5,
-        opacity: 0.95,
-        lineJoin: 'round',
-      }).addTo(mapInstanceRef.current);
 
-      routeLayerRef.current = polyline;
-      mapInstanceRef.current.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+      // Línea de base/halo blanco para máximo contraste sobre satélite y mapas urbanos
+      const halo = L.polyline(latlngs, {
+        color: '#FFFFFF',
+        weight: 7,
+        opacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round',
+      });
+
+      // Trazado vial principal en ámbar/terracota brillante
+      const routeLine = L.polyline(latlngs, {
+        color: '#D97706',
+        weight: 4.5,
+        opacity: 0.98,
+        lineCap: 'round',
+        lineJoin: 'round',
+      });
+
+      const group = L.layerGroup([halo, routeLine]).addTo(mapInstanceRef.current);
+      routeLayerRef.current = group;
+      mapInstanceRef.current.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
     }
   }, [routePolyline]);
 

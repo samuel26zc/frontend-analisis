@@ -23,6 +23,7 @@ import {
   Coordinate,
 } from '../types';
 import { placesApi, tspApi } from '../services/api';
+import { getTourRealRoadRoute } from '../services/roadRoutingService';
 import { MetricCard } from '../components/common/MetricCard';
 import { Badge } from '../components/common/Badge';
 import { Alert } from '../components/common/Alert';
@@ -45,9 +46,11 @@ export const TspView: React.FC = () => {
   const [compareMode, setCompareMode] = useState<boolean>(true);
   const [tspResult, setTspResult] = useState<TspResult | null>(null);
   const [compareResult, setCompareResult] = useState<CompareTspResult | null>(null);
+  const [tspRoadPolyline, setTspRoadPolyline] = useState<Coordinate[]>([]);
 
   // Day Itinerary State
   const [itineraryResult, setItineraryResult] = useState<DayItineraryResult | null>(null);
+  const [itineraryRoadPolyline, setItineraryRoadPolyline] = useState<Coordinate[]>([]);
 
   // Initial load
   useEffect(() => {
@@ -125,6 +128,7 @@ export const TspView: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      let finalTourIds: string[] = [];
       if (compareMode) {
         const [compRes, solveRes] = await Promise.all([
           tspApi.compareMethods(originId, selectedPlaceIds),
@@ -132,10 +136,23 @@ export const TspView: React.FC = () => {
         ]);
         setCompareResult(compRes);
         setTspResult(solveRes);
+        finalTourIds = solveRes.fullTourPlaceIds;
       } else {
         const res = await tspApi.solve(originId, selectedPlaceIds, algorithm);
         setTspResult(res);
         setCompareResult(null);
+        finalTourIds = res.fullTourPlaceIds;
+      }
+
+      // Proyectar el circuito óptimo sobre la red vial continua de OpenStreetMap
+      if (finalTourIds && finalTourIds.length > 0) {
+        const baseCoords = getTourCoordinates(finalTourIds);
+        getTourRealRoadRoute(baseCoords)
+          .then((roadCoords) => {
+            if (roadCoords && roadCoords.length > 0) setTspRoadPolyline(roadCoords);
+            else setTspRoadPolyline(baseCoords);
+          })
+          .catch(() => setTspRoadPolyline(baseCoords));
       }
     } catch (err: any) {
       console.error('Error calculando ATSP:', err);
@@ -157,6 +174,16 @@ export const TspView: React.FC = () => {
     try {
       const res = await tspApi.planDayItinerary(originId, selectedPlaceIds);
       setItineraryResult(res);
+
+      // Proyectar el itinerario sobre carreteras terrestres reales
+      const tourIds = [res.originPlaceId, ...res.stops.map((s) => s.placeId)];
+      const baseCoords = getTourCoordinates(tourIds);
+      getTourRealRoadRoute(baseCoords)
+        .then((roadCoords) => {
+          if (roadCoords && roadCoords.length > 0) setItineraryRoadPolyline(roadCoords);
+          else setItineraryRoadPolyline(baseCoords);
+        })
+        .catch(() => setItineraryRoadPolyline(baseCoords));
     } catch (err: any) {
       console.error('Error planificando itinerario de 11h:', err);
       setError(err.message || 'Error al procesar el itinerario con poda.');
@@ -492,10 +519,14 @@ export const TspView: React.FC = () => {
               places={places.filter((p) =>
                 itineraryResult.stops.some((s) => s.placeId === p.id) || p.id === itineraryResult.originPlaceId
               )}
-              routePolyline={getTourCoordinates([
-                itineraryResult.originPlaceId,
-                ...itineraryResult.stops.map((s) => s.placeId),
-              ])}
+              routePolyline={
+                itineraryRoadPolyline.length > 0
+                  ? itineraryRoadPolyline
+                  : getTourCoordinates([
+                      itineraryResult.originPlaceId,
+                      ...itineraryResult.stops.map((s) => s.placeId),
+                    ])
+              }
               selectedPlaceId={itineraryResult.originPlaceId}
               className="h-[460px] rounded-2xl overflow-hidden border border-cafe-200 shadow-inner"
             />
@@ -732,7 +763,11 @@ export const TspView: React.FC = () => {
             </h3>
             <QuindioMap
               places={places.filter((p) => tspResult.fullTourPlaceIds.includes(p.id))}
-              routePolyline={getTourCoordinates(tspResult.fullTourPlaceIds)}
+              routePolyline={
+                tspRoadPolyline.length > 0
+                  ? tspRoadPolyline
+                  : getTourCoordinates(tspResult.fullTourPlaceIds)
+              }
               selectedPlaceId={tspResult.originPlaceId}
               className="h-[460px] rounded-2xl overflow-hidden border border-cafe-200 shadow-inner"
             />
