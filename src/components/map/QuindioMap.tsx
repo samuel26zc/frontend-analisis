@@ -195,8 +195,15 @@ export const QuindioMap: React.FC<QuindioMapProps> = ({
         zIndexOffset: isSelected ? 1000 : 0,
       });
 
+      // Tooltip informativo al pasar el cursor para saber de inmediato qué lugar es
+      marker.bindTooltip(place.name, {
+        direction: 'top',
+        offset: [0, -36],
+        className: 'font-sans font-semibold text-xs',
+      });
+
       const popupHtml = `
-        <div style="font-family: 'Plus Jakarta Sans', sans-serif; min-width: 200px;">
+        <div style="font-family: 'Plus Jakarta Sans', sans-serif; min-width: 210px;">
           <h4 style="font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1rem; color: #1c1917; margin-bottom: 2px;">
             ${place.name}
           </h4>
@@ -216,13 +223,32 @@ export const QuindioMap: React.FC<QuindioMapProps> = ({
         className: 'custom-card-popup',
       });
 
+      if (isSelected) {
+        marker.openPopup();
+      }
+
       marker.on('click', () => {
         if (onPlaceSelect) onPlaceSelect(place);
       });
 
       markersLayerRef.current?.addLayer(marker);
     });
+
+    // Encuadre automático de la vista del mapa según los lugares mostrados
+    if (places.length > 0 && !selectedPlaceId) {
+      const bounds = L.latLngBounds(places.map((p) => [p.latitude, p.longitude]));
+      mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+    }
   }, [places, selectedPlaceId]);
+
+  // Si se selecciona un lugar en particular, centrar la cámara suavemente sobre él
+  useEffect(() => {
+    if (!mapInstanceRef.current || !selectedPlaceId) return;
+    const target = places.find((p) => p.id === selectedPlaceId);
+    if (target) {
+      mapInstanceRef.current.flyTo([target.latitude, target.longitude], 14, { duration: 0.8 });
+    }
+  }, [selectedPlaceId]);
 
   // Actualizar polyline de caminos mínimos
   useEffect(() => {
