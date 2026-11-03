@@ -37,13 +37,47 @@ export const QuindioMap: React.FC<QuindioMapProps> = ({
       maxZoom: 18,
     });
 
-    // CartoDB Voyager Tile Layer (cartografía cálida, elegante y legible)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    // Capas Base disponibles
+    const cartoApiKey = (import.meta as any).env?.VITE_CARTO_API_KEY || '';
+
+    // 1. OpenStreetMap Estándar (100% Libre, sin marcas de agua ni requerimiento de API key)
+    const osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    });
+
+    // 2. Esri World Topo Map (Relieve montañoso de la Cordillera Central del Quindío, 100% libre)
+    const esriLayer = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, USGS, NPS',
+        maxZoom: 18,
+      }
+    );
+
+    // 3. CartoDB Voyager (soporta API key opcional configurada en .env)
+    const cartoUrl = cartoApiKey
+      ? `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${cartoApiKey}`
+      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+    const cartoLayer = L.tileLayer(cartoUrl, {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       subdomains: 'abcd',
       maxZoom: 19,
-    }).addTo(map);
+    });
+
+    // Activar OpenStreetMap por defecto para garantizar carga limpia sin marcas de agua
+    osmLayer.addTo(map);
+
+    // Control para alternar entre las tres opciones cartográficas
+    const baseLayers = {
+      '🗺️ OpenStreetMap (Sin marcas de agua)': osmLayer,
+      '⛰️ Relieve Cordillera (Esri Topo)': esriLayer,
+      '☕ CartoDB Voyager (Requiere clave)': cartoLayer,
+    };
+    L.control.layers(baseLayers, undefined, { position: 'topright' }).addTo(map);
 
     markersLayerRef.current = L.layerGroup().addTo(map);
     mapInstanceRef.current = map;
