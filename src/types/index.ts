@@ -225,6 +225,12 @@ export interface DayItineraryResult {
   prunedAttractions: string[];
   pruningJustifications: string[];
   recalculatedWithHeldKarp: boolean;
+  heldKarpTotalMinutes?: number;
+  greedyTotalMinutes?: number;
+  differenceMinutes?: number;
+  heldKarpTravelMinutes?: number;
+  greedyTravelMinutes?: number;
+  greedyTourNames?: string[];
   stops: ItineraryStop[];
 }
 
