@@ -26,79 +26,17 @@ export const QuindioMap: React.FC<QuindioMapProps> = ({
   orderedStopIds = [],
   onPlaceSelect,
   className = 'h-[500px]',
-  defaultTileStyle = 'satellite',
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const currentBaseLayerRef = useRef<L.LayerGroup | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const routeLayerRef = useRef<L.Layer | null>(null);
   const hullLayerRef = useRef<L.Polygon | null>(null);
 
-  const [activeStyle, setActiveStyle] = useState<MapTileStyle>(defaultTileStyle);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [showLegendMobile, setShowLegendMobile] = useState<boolean>(false);
 
-  // Generador de capas base según el estilo seleccionado
-  const createBaseLayer = (style: MapTileStyle): L.LayerGroup => {
-    switch (style) {
-      case 'satellite': {
-        const satLayer = L.tileLayer(
-          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          {
-            attribution: 'Fotografía &copy; Esri, Maxar, Earthstar Geographics',
-            maxZoom: 19,
-          }
-        );
-        const labelsLayer = L.tileLayer(
-          'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-          {
-            maxZoom: 19,
-          }
-        );
-        return L.layerGroup([satLayer, labelsLayer]);
-      }
-
-      case 'gray': {
-        const grayBase = L.tileLayer(
-          'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-          {
-            attribution: 'Tiles &copy; Esri &mdash; DeLorme, NAVTEQ',
-            maxZoom: 16,
-          }
-        );
-        const grayLabels = L.tileLayer(
-          'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
-          {
-            maxZoom: 16,
-          }
-        );
-        return L.layerGroup([grayBase, grayLabels]);
-      }
-
-      case 'topo': {
-        const topoLayer = L.tileLayer(
-          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-          {
-            attribution: 'Topografía &copy; Esri &mdash; USGS, NPS',
-            maxZoom: 18,
-          }
-        );
-        return L.layerGroup([topoLayer]);
-      }
-
-      case 'streets':
-      default: {
-        const streets = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-          maxZoom: 19,
-        });
-        return L.layerGroup([streets]);
-      }
-    }
-  };
-
-  // Inicializar el mapa de Leaflet
+  // Inicializar el mapa de Leaflet exclusivamente con la capa vial de OpenStreetMap
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
@@ -107,15 +45,16 @@ export const QuindioMap: React.FC<QuindioMapProps> = ({
       center: [4.53252, -75.67304],
       zoom: 11,
       minZoom: 9,
-      maxZoom: 18,
+      maxZoom: 19,
       zoomControl: false,
     });
 
     L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
-    const initialLayer = createBaseLayer(activeStyle);
-    initialLayer.addTo(map);
-    currentBaseLayerRef.current = initialLayer;
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
 
     markersLayerRef.current = L.layerGroup().addTo(map);
     mapInstanceRef.current = map;
@@ -134,19 +73,6 @@ export const QuindioMap: React.FC<QuindioMapProps> = ({
     }, 150);
     return () => clearTimeout(timer);
   }, [isFullscreen]);
-
-  // Cambiar capa base cuando el usuario pulsa un botón del selector
-  useEffect(() => {
-    if (!mapInstanceRef.current) return;
-
-    if (currentBaseLayerRef.current) {
-      mapInstanceRef.current.removeLayer(currentBaseLayerRef.current);
-    }
-
-    const newLayer = createBaseLayer(activeStyle);
-    newLayer.addTo(mapInstanceRef.current);
-    currentBaseLayerRef.current = newLayer;
-  }, [activeStyle]);
 
   // Función para re-encuadrar la vista en la ruta, polígono o catálogo completo
   const handleResetBounds = () => {
@@ -436,63 +362,10 @@ export const QuindioMap: React.FC<QuindioMapProps> = ({
           </button>
         </div>
 
-        {/* Selector de Estilo de Mapa Flotante en la esquina superior derecha */}
-        <div className="absolute top-3.5 right-3.5 z-[1000] flex items-center bg-white/95 backdrop-blur-md rounded-xl p-1 shadow-md border border-cafe-200">
-          <button
-            type="button"
-            onClick={() => setActiveStyle('satellite')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeStyle === 'satellite'
-                ? 'bg-cafe-900 text-white shadow-sm'
-                : 'text-cafe-700 hover:text-cafe-950 hover:bg-cafe-100'
-            }`}
-            title="Fotografía satelital de alta resolución con nombres de vías y municipios"
-          >
-            <span>🛰️</span>
-            <span className="hidden sm:inline">Satélite</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveStyle('streets')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeStyle === 'streets'
-                ? 'bg-cafe-900 text-white shadow-sm'
-                : 'text-cafe-700 hover:text-cafe-950 hover:bg-cafe-100'
-            }`}
-            title="Mapa callejero y de carreteras OpenStreetMap"
-          >
-            <span>🗺️</span>
-            <span className="hidden sm:inline">Vial</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveStyle('topo')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeStyle === 'topo'
-                ? 'bg-cafe-900 text-white shadow-sm'
-                : 'text-cafe-700 hover:text-cafe-950 hover:bg-cafe-100'
-            }`}
-            title="Relieve topográfico con curvas de nivel de la Cordillera Central"
-          >
-            <span>⛰️</span>
-            <span className="hidden sm:inline">Relieve</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveStyle('gray')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeStyle === 'gray'
-                ? 'bg-cafe-900 text-white shadow-sm'
-                : 'text-cafe-700 hover:text-cafe-950 hover:bg-cafe-100'
-            }`}
-            title="Lienzo minimalista ejecutivo para análisis de grafos"
-          >
-            <span>🏙️</span>
-            <span className="hidden sm:inline">Minimalista</span>
-          </button>
+        {/* Indicador de Cartografía Vial OpenStreetMap en la esquina superior derecha */}
+        <div className="absolute top-3.5 right-3.5 z-[1000] flex items-center gap-1.5 bg-white/95 backdrop-blur-md rounded-xl px-3 py-1.5 shadow-md border border-cafe-200 text-xs font-semibold text-cafe-900">
+          <span>🗺️</span>
+          <span>Red Vial OpenStreetMap</span>
         </div>
 
         {/* Botón de Leyenda para Móvil */}
