@@ -1,15 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React from 'react';
 import {
   Compass,
-  Database,
   GitFork,
   MapPin,
   Network,
-  RefreshCw,
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
-import { networkApi } from '../../services/api';
 
 export type ActiveTab = 'catalog' | 'routes' | 'convex-hull' | 'tsp' | 'experiments';
 
@@ -19,22 +16,6 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange }) => {
-  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
-  const [checkingStatus, setCheckingStatus] = useState<boolean>(false);
-
-  const checkBackend = useCallback(() => {
-    setCheckingStatus(true);
-    networkApi
-      .getStats()
-      .then(() => setBackendOnline(true))
-      .catch(() => setBackendOnline(false))
-      .finally(() => setCheckingStatus(false));
-  }, []);
-
-  useEffect(() => {
-    checkBackend();
-  }, [checkBackend]);
-
   const navItems: Array<{
     id: ActiveTab;
     label: string;
@@ -91,59 +72,26 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange }) => {
       <div className="h-1 w-full bg-gradient-to-r from-cordillera-600 via-amber-500 to-terracota-600" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Fila Principal: Identidad y Estado del Servidor */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4 gap-3 border-b border-cafe-800/70">
+        {/* Fila Principal: Identidad del Proyecto */}
+        <div className="flex items-center justify-between py-4 border-b border-cafe-800/70">
           {/* Logo y Título */}
-          <div className="flex items-center justify-between">
-            <div
-              onClick={() => onTabChange('catalog')}
-              className="flex items-center space-x-3.5 cursor-pointer group"
-            >
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-terracota-700 flex items-center justify-center shadow-md border border-amber-400/30 group-hover:scale-105 transition-transform">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <div className="flex items-center flex-wrap gap-2">
-                  <span className="text-lg sm:text-xl font-serif font-bold text-white tracking-tight">
-                    Rutas del Paisaje Cultural Cafetero
-                  </span>
-                  <span className="text-[10px] font-sans font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-cordillera-800/90 text-cordillera-200 border border-cordillera-600/50">
-                    Quindío • UNESCO
-                  </span>
-                </div>
-                <p className="text-xs text-cafe-300 font-sans mt-0.5">
-                  Sistema de Análisis Algorítmico, Optimización Combinatoria y Cartografía Vial
-                </p>
-              </div>
+          <div
+            onClick={() => onTabChange('catalog')}
+            className="flex items-center space-x-3.5 cursor-pointer group"
+          >
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-terracota-700 flex items-center justify-center shadow-md border border-amber-400/30 group-hover:scale-105 transition-transform">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
-          </div>
-
-          {/* Estado de Conexión con Backend */}
-          <div className="flex items-center self-start sm:self-auto space-x-2.5 bg-cafe-900/90 px-3.5 py-1.5 rounded-full border border-cafe-800 text-xs shadow-inner">
-            <Database className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span className="text-cafe-300 hidden md:inline">Motor Spring Boot:</span>
-            {backendOnline === null || checkingStatus ? (
-              <span className="text-cafe-300 font-mono flex items-center gap-1.5">
-                <RefreshCw className="w-3 h-3 animate-spin text-amber-400" />
-                Verificando...
-              </span>
-            ) : backendOnline ? (
-              <span className="flex items-center gap-1.5 text-emerald-400 font-semibold font-mono">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Activo (:8080)
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={checkBackend}
-                className="flex items-center gap-1.5 text-terracota-300 hover:text-white font-semibold transition-colors"
-                title="Haz clic para reintentar conexión con el servidor en puerto 8080"
-              >
-                <span className="w-2 h-2 rounded-full bg-terracota-500" />
-                <span>Sin conexión (Reintentar)</span>
-                <RefreshCw className="w-3 h-3 ml-0.5" />
-              </button>
-            )}
+            <div>
+              <div className="flex items-center flex-wrap gap-2">
+                <span className="text-lg sm:text-xl font-serif font-bold text-white tracking-tight">
+                  Rutas del Paisaje Cultural Cafetero
+                </span>
+              </div>
+              <p className="text-xs text-cafe-300 font-sans mt-0.5">
+                Sistema de Análisis Algorítmico, Optimización Combinatoria y Cartografía Vial
+              </p>
+            </div>
           </div>
         </div>
 
