@@ -77,19 +77,23 @@ export const RoutesView: React.FC = () => {
           resolvedSingle = res;
         }
 
-        // Proyectar el trazado continuo sobre carreteras terrestres reales (OSRM / OpenStreetMap)
-        setIsRoadSnapping(true);
-        try {
-          const roadRes = await getRealRoadRoute(resolvedSingle.polyline);
-          if (roadRes && roadRes.polyline.length > 0) {
-            setRoadPolyline(roadRes.polyline);
-          } else {
-            setRoadPolyline(resolvedSingle.polyline);
-          }
-        } catch {
+        // Trazado directo de los nodos de la red vial de OpenStreetMap calculados por Dijkstra en el backend
+        if (resolvedSingle.polyline && resolvedSingle.polyline.length > 2) {
           setRoadPolyline(resolvedSingle.polyline);
-        } finally {
-          setIsRoadSnapping(false);
+        } else {
+          setIsRoadSnapping(true);
+          try {
+            const roadRes = await getRealRoadRoute(resolvedSingle.polyline);
+            if (roadRes && roadRes.polyline.length > 0) {
+              setRoadPolyline(roadRes.polyline);
+            } else {
+              setRoadPolyline(resolvedSingle.polyline);
+            }
+          } catch {
+            setRoadPolyline(resolvedSingle.polyline);
+          } finally {
+            setIsRoadSnapping(false);
+          }
         }
       } catch (err: any) {
         console.error('Error calculando ruta:', err);
