@@ -23,8 +23,7 @@ import {
   DayItineraryResult,
   Coordinate,
 } from '../types';
-import { placesApi, tspApi } from '../services/api';
-import { getTourRealRoadRoute } from '../services/roadRoutingService';
+import { placesApi, routesApi, tspApi } from '../services/api';
 import { MetricCard } from '../components/common/MetricCard';
 import { Alert } from '../components/common/Alert';
 import { QuindioMap } from '../components/map/QuindioMap';
@@ -56,12 +55,41 @@ export const TspView: React.FC = () => {
       const p = allPlaces.find((item) => item.id === id);
       if (p) coords.push({ latitude: p.latitude, longitude: p.longitude });
     });
-    if (coords.length > 0 && placeIds.length > 0) {
-      const orig = allPlaces.find((item) => item.id === placeIds[0]);
-      if (orig) coords.push({ latitude: orig.latitude, longitude: orig.longitude });
-    }
     return coords;
   }, []);
+
+  const buildDijkstraTourPolyline = useCallback(
+    async (closedTourIds: string[], allPlaces: Place[]): Promise<Coordinate[]> => {
+      if (!closedTourIds || closedTourIds.length < 2) {
+        return getTourCoordinates(closedTourIds || [], allPlaces);
+      }
+      const legsPromises: Array<Promise<Coordinate[]>> = [];
+      for (let i = 0; i < closedTourIds.length - 1; i++) {
+        const fromId = closedTourIds[i];
+        const toId = closedTourIds[i + 1];
+        if (fromId === toId) continue;
+        legsPromises.push(
+          routesApi
+            .computeShortestPath(fromId, toId, 'COLA_PRIORIDAD')
+            .then((res) => res.polyline || [])
+            .catch(() => getTourCoordinates([fromId, toId], allPlaces))
+        );
+      }
+      const legs = await Promise.all(legsPromises);
+      const merged: Coordinate[] = [];
+      legs.forEach((leg) => {
+        if (leg.length > 0) {
+          if (merged.length > 0) {
+            merged.push(...leg.slice(1));
+          } else {
+            merged.push(...leg);
+          }
+        }
+      });
+      return merged.length > 0 ? merged : getTourCoordinates(closedTourIds, allPlaces);
+    },
+    [getTourCoordinates]
+  );
 
   const executeItineraryPlanning = useCallback(
     async (origId: string, attractionIds: string[], allPlaces: Place[]) => {
@@ -72,14 +100,9 @@ export const TspView: React.FC = () => {
         const res = await tspApi.planDayItinerary(origId, attractionIds);
         setItineraryResult(res);
 
-        const tourIds = [res.originPlaceId, ...res.stops.map((s) => s.placeId)];
-        const baseCoords = getTourCoordinates(tourIds, allPlaces);
-        getTourRealRoadRoute(baseCoords)
-          .then((roadCoords) => {
-            if (roadCoords && roadCoords.length > 0) setItineraryRoadPolyline(roadCoords);
-            else setItineraryRoadPolyline(baseCoords);
-          })
-          .catch(() => setItineraryRoadPolyline(baseCoords));
+        const closedTourIds = [res.originPlaceId, ...res.stops.map((s) => s.placeId), res.originPlaceId];
+        const dijkstraCoords = await buildDijkstraTourPolyline(closedTourIds, allPlaces);
+        setItineraryRoadPolyline(dijkstraCoords);
       } catch (err: any) {
         console.error('Error planificando itinerario de 11h:', err);
         setError(err.message || 'Error al optimizar el itinerario diario.');
@@ -87,7 +110,7 @@ export const TspView: React.FC = () => {
         setLoading(false);
       }
     },
-    [getTourCoordinates]
+    [buildDijkstraTourPolyline]
   );
 
   useEffect(() => {
@@ -190,13 +213,8 @@ export const TspView: React.FC = () => {
       }
 
       if (finalTourIds && finalTourIds.length > 0) {
-        const baseCoords = getTourCoordinates(finalTourIds, places);
-        getTourRealRoadRoute(baseCoords)
-          .then((roadCoords) => {
-            if (roadCoords && roadCoords.length > 0) setTspRoadPolyline(roadCoords);
-            else setTspRoadPolyline(baseCoords);
-          })
-          .catch(() => setTspRoadPolyline(baseCoords));
+        const dijkstraCoords = await buildDijkstraTourPolyline(finalTourIds, places);
+        setTspRoadPolyline(dijkstraCoords);
       }
     } catch (err: any) {
       console.error('Error calculando ATSP:', err);

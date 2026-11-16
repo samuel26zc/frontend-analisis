@@ -1,89 +1,63 @@
 # Paisaje Cultural Cafetero — Frontend de Análisis de Algoritmos (Quindío 2026-2)
 
-Sistema de información geográfica y optimización de rutas turísticas para el Departamento del Quindío, Colombia. Desarrollado como proyecto final de la asignatura **Análisis y Complejidad de Algoritmos (2026-2)**.
+Aplicación web demostrativa de análisis de algoritmos y planificación de rutas turísticas sobre la red vial de **OpenStreetMap** del Departamento del Quindío, Colombia. Desarrollada como parte del proyecto final de la asignatura **Análisis y Complejidad de Algoritmos (2026-2)**.
 
 ---
 
-## 🎨 Identidad Visual "Aroma Andino"
+## 🗺️ Módulos Implementados (Requerimiento 5)
 
-Diseño orgánico, cultural y contemporáneo inspirado en el **Paisaje Cultural Cafetero (UNESCO)**:
-- **Café Expreso y Grano Tostado** (`#2C1D11`, `#3E2718`): Textos con jerarquía tipográfica y estructura.
-- **Verde Cordillera Central** (`#2E5A44`, `#1B3B2B`): Elementos de éxito, coberturas y componentes conexas.
-- **Ámbar Maduro** (`#D97706`, `#B45309`): Acentos en métricas, advertencias y podas.
-- **Terracota Andina** (`#C05638`, `#9E3E26`): Trayectos mínimos, arcos viales y estados críticos.
-- **Crema de Café & Pergamino** (`#FBF9F5`, `#F3EFEA`): Fondos descansados y legibilidad de mapas.
-- **Tipografía Editorial**: *Playfair Display* para encabezados institucionales y *Plus Jakarta Sans* para tablas numéricas y controles interactivos.
+### 1. Módulo R1: Territorio & Red Vial de OpenStreetMap
+- Visualización de los **42 lugares del catálogo** (12 cabeceras municipales, 15 atractivos turísticos, 8 fincas/hoteles rurales y 7 centros de acopio/trilladoras) sobre el mapa de la **Red Vial de OpenStreetMap**.
+- Estadísticas de la red descargada (**37,117 nodos** y **73,615 aristas dirigidas**) y de su Mayor Componente Fuertemente Conexa (**35,442 nodos** y **70,837 aristas**).
+- Estimación analítica de memoria: **Matriz de Adyacencia (10,511.65 MB)** frente a **Listas de Adyacencia (4.22 MB)** — Factor de optimización $\approx 2\,491.3\times$.
+- Asociación de lugares al nodo más cercano en coordenadas métricas **UTM Zona 18N** y reporte de los lugares situados a más de 500 m.
 
----
+### 2. Módulo R2: Caminos Mínimos (Dijkstra) & Matriz Asimétrica (42 × 42)
+- Selección de origen y destino con cálculo en tiempo real mediante **Dijkstra con Cola de Prioridad** $O((V+E)\log V)$ y **Dijkstra con Búsqueda Lineal** $O(V^2)$.
+- Trazado directo en el mapa de la secuencia de nodos viales de OpenStreetMap reconstruida a partir de los predecesores de Dijkstra.
+- Visualización interactiva y descarga en formato **CSV** de la matriz asimétrica de tiempos de viaje $42 \times 42$.
 
-## 🗺️ Módulos Implementados
+### 3. Módulo R3: Envolvente Convexa (QuickHull 2D vs SciPy)
+- Visualización del polígono de la envolvente convexa sobre los **35,442 nodos** de la componente fuertemente conexa en coordenadas enteras de 64 bits (UTM Zona 18N), delimitado por **17 vértices extremos** en sentido antihorario.
+- Tabla y gráfica comparativa de tiempos medidos entre `QuickHull2D` propio (Java 21) y `scipy.spatial.ConvexHull` (Qhull en C, SciPy 1.18.1) para los nodos de la red y cuadrados de $1\,000$, $10\,000$ y $50\,000$ puntos (semilla fija `42`), con coincidencia de vértices del 100 %.
 
-### 1. Módulo R1: Catálogo Territorial & Grafo Vial
-- Visualización de 42 atractivos turísticos, cabeceras municipales y centros de acopio en mapa CartoDB Voyager.
-- Filtros por categoría y municipio con popups detallados de coordenadas WGS84 y duración de visita.
-- Análisis de memoria del grafo: **Matriz de Adyacencia (1,675 MB)** vs **Lista de Adyacencia (1.97 MB)** — Factor de optimización $\approx 850\times$.
-- Componente Fuertemente Conexa (SCC) calculada con el **Algoritmo de Tarjan** $O(V + E)$ con 100% de retención de lugares.
-- Tratamiento de 12 atractivos rurales a $>500$ m de la red mediante proyección virtual.
+### 4. Módulo R4: Ruta Óptima ATSP e Itinerario de 11 Horas
+- Selección del lugar de partida (por defecto Armenia, Plaza de Bolívar) y de los lugares/atractivos a visitar.
+- Comparación en tiempo real entre **Bellman-Held-Karp** $\Theta(2^k k^2)$, **Fuerza Bruta** $\Theta(k!)$ y la **Heurística Voraz** del vecino más cercano $\Theta(k^2)$.
+- Planificador de jornada de un día ($\le 11\text{ h} = 660\text{ min}$) con poda justificada de atractivos cuando se excede el límite y visualización del recorrido en el mapa **uniendo las rutas de Dijkstra entre paradas consecutivas**.
 
-### 2. Módulo R2: Caminos Mínimos (Dijkstra) & Matriz Asimétrica
-- Selección interactiva de origen y destino con autocompletado y botón de intercambio rápido.
-- Comparación en vivo de **Min-Heap binario** $O((V+E)\log V)$ frente a **Búsqueda Lineal** $O(V^2)$ con verificación del invariante de optimalidad $d[v] \le d[u] + w(u, v)$.
-- Representación cartográfica de la ruta proyectada y secuencia de intersecciones viales.
-- Matriz de tiempos de viaje $42 \times 42$ (1,764 pares) calculada con Dijkstra sobre la SCC.
-- Comprobador interactivo de asimetría $T(A \to B) \ne T(B \to A)$ debida a topografía de montaña, pendientes y sentidos únicos.
-- Descarga de la matriz completa en formato **CSV**.
-
-### 3. Módulo R3: Envolvente Convexa (QuickHull)
-- Delimitación poligonal del departamento mediante el enfoque divide y vencerás **QuickHull** $T(n) = 2T(n/2) + O(n)$.
-- Cálculo de área de cobertura ($km^2$), perímetro ($km$) y listado de vértices extremos en sentido antihorario (CCW).
-- Proyección plana cartesiana **UTM Zona 18N** con aritmética entera de 64 bits (`long`) para evitar imprecisiones de coma flotante.
-- Benchmark experimental vs **SciPy (Qhull en C)** para $N = 1,000$, $10,000$ y $50,000$ puntos con coincidencia geométrica del 100%.
-
-### 4. Módulo R4: Viajante Asimétrico (ATSP) & Itinerario de 11 Horas con Poda
-- **Solucionador ATSP Teórico**:
-  - Algoritmo exacto **Bellman-Held-Karp** con programación dinámica y máscaras de bits $O(2^k k^2)$.
-  - Comparativa con **Fuerza Bruta** $O(k!)$ (con corte de seguridad a 10s) y **Heurística Voraz** del vecino más cercano $O(k^2)$.
-  - Medición de la brecha porcentual de calidad heurística.
-- **Itinerario Turístico de un Día (11 Horas)**:
-  - Planificación con límite de jornada estricto de 11 horas (660 minutos), considerando traslados viales y tiempo de estancia en cada sitio.
-  - **Algoritmo de poda sistemática**: Descarte automático y justificado de atracciones cuando la jornada excede las 11 horas, con recálculo exacto del circuito restante mediante Held-Karp.
-  - Cronograma de paradas detallado minuto a minuto (08:00 AM - 19:00 PM).
-
-### 5. Módulo R5: Laboratorio Experimental (Anexo del Proyecto)
-- Ficha técnica completa del entorno de pruebas (procesador, núcleos, RAM, Heap JVM, versión de Java y sistema operativo).
-- Gráficos interactivos (Recharts) y tablas canónicas para las 4 dimensiones experimentales.
-- Protocolo con 5 iteraciones de calentamiento JIT C2 y mediciones en nanosegundos.
+### 5. Módulo R5: Laboratorio Experimental y Tablas del Anexo
+- Ficha técnica de la máquina reportada en vivo por la JVM.
+- Tablas y gráficas generadas directamente desde los archivos de resultados experimentales del backend (`results/*.csv` y `experiments_results.json`), sin datos escritos a mano en el frontend.
 
 ---
 
-## 🚀 Requisitos y Ejecución
+## 🚀 Requisitos y Ejecución Local
 
 ### Requisitos Previos
-- **Node.js** >= 18.x
-- **npm** o **pnpm**
-- Backend Spring Boot activo en `http://localhost:8080` (ver repositorio `backend-analisis`)
+- **Node.js** >= 18.x y **npm**
+- Servidor Backend Spring Boot activo en `http://localhost:8080` (ver repositorio `backend-analisis`)
 
-### Instalación de Dependencias
+### 1. Instalar dependencias
 ```bash
 npm install
 ```
 
-### Ejecutar Servidor de Desarrollo
+### 2. Iniciar servidor de desarrollo
 ```bash
 npm run dev
 ```
 La aplicación estará disponible en `http://localhost:5173`.
 
-### Compilar para Producción
+### 3. Compilar para producción
 ```bash
 npm run build
 ```
-Genera la carpeta `dist/` optimizada.
 
 ---
 
 ## 👥 Equipo de Trabajo
 
-- **Samuel Ortiz** (`Samuxll0`) — *Arquitectura base, tema visual Aroma Andino, layout y Módulo R1 Catálogo.*
-- **Samuel Zuluaga Castaño** (`samuel26zc`) — *Módulo R2 Caminos Mínimos Dijkstra, Matriz Asimétrica CSV y Módulo R3 Envolvente Convexa QuickHull.*
-- **Juan Pablo Mejia Parada** (`jpelefantino`) — *Módulo R4 ATSP, Itinerario de 11h con Poda y Módulo R5 Laboratorio Experimental del Anexo.*
+- **Samuel Ortiz** (`Samuxll0`) — *Arquitectura base, layout y Módulo R1 (Territorio y Red Vial).*
+- **Samuel Zuluaga Castaño** (`samuel26zc`) — *Módulo R2 (Caminos Mínimos Dijkstra y Matriz Asimétrica CSV) y Módulo R3 (Envolvente Convexa QuickHull).*
+- **Juan Pablo Mejia Parada** (`jpelefantino`) — *Módulo R4 (ATSP e Itinerario de 11h con rutas de Dijkstra) y Módulo R5 (Laboratorio Experimental).*
