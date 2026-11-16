@@ -8,9 +8,9 @@ Aplicación web demostrativa de análisis de algoritmos y planificación de ruta
 
 ### 1. Módulo R1: Territorio & Red Vial de OpenStreetMap
 - Visualización de los **42 lugares del catálogo** (12 cabeceras municipales, 15 atractivos turísticos, 8 fincas/hoteles rurales y 7 centros de acopio/trilladoras) sobre el mapa de la **Red Vial de OpenStreetMap**.
-- Estadísticas de la red descargada (**37,117 nodos** y **73,615 aristas dirigidas**) y de su Mayor Componente Fuertemente Conexa (**35,442 nodos** y **70,837 aristas**).
+- Estadísticas de la red descargada (**37,117 nodos** y **73,615 aristas dirigidas**, fecha de descarga `2026-11-15T13:54:01-05:00`) y de su Mayor Componente Fuertemente Conexa (**35,442 nodos** y **70,865 aristas**).
 - Estimación analítica de memoria: **Matriz de Adyacencia (10,511.65 MB)** frente a **Listas de Adyacencia (4.22 MB)** — Factor de optimización $\approx 2\,491.3\times$.
-- Asociación de lugares al nodo más cercano en coordenadas métricas **UTM Zona 18N** y reporte de los lugares situados a más de 500 m.
+- Asociación de lugares al nodo más cercano en coordenadas métricas **UTM Zona 18N** y reporte de los 2 atractivos situados a más de 500 m (`Valle de Cocora` a `654.6 m` y `Cascadas de Río Verde` a `571.2 m`), tratados usando directamente su nodo más cercano en la SCC y reportando la distancia.
 
 ### 2. Módulo R2: Caminos Mínimos (Dijkstra) & Matriz Asimétrica (42 × 42)
 - Selección de origen y destino con cálculo en tiempo real mediante **Dijkstra con Cola de Prioridad** $O((V+E)\log V)$ y **Dijkstra con Búsqueda Lineal** $O(V^2)$.

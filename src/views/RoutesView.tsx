@@ -23,7 +23,6 @@ import {
   Coordinate,
 } from '../types';
 import { placesApi, routesApi } from '../services/api';
-import { getRealRoadRoute } from '../services/roadRoutingService';
 import { MetricCard } from '../components/common/MetricCard';
 import { Alert } from '../components/common/Alert';
 import { QuindioMap } from '../components/map/QuindioMap';
@@ -38,7 +37,6 @@ export const RoutesView: React.FC = () => {
   const [singleResult, setSingleResult] = useState<ShortestPathResult | null>(null);
   const [compareResult, setCompareResult] = useState<CompareDijkstraResult | null>(null);
   const [roadPolyline, setRoadPolyline] = useState<Coordinate[]>([]);
-  const [isRoadSnapping, setIsRoadSnapping] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,24 +75,8 @@ export const RoutesView: React.FC = () => {
           resolvedSingle = res;
         }
 
-        // Trazado directo de los nodos de la red vial de OpenStreetMap calculados por Dijkstra en el backend
-        if (resolvedSingle.polyline && resolvedSingle.polyline.length > 2) {
-          setRoadPolyline(resolvedSingle.polyline);
-        } else {
-          setIsRoadSnapping(true);
-          try {
-            const roadRes = await getRealRoadRoute(resolvedSingle.polyline);
-            if (roadRes && roadRes.polyline.length > 0) {
-              setRoadPolyline(roadRes.polyline);
-            } else {
-              setRoadPolyline(resolvedSingle.polyline);
-            }
-          } catch {
-            setRoadPolyline(resolvedSingle.polyline);
-          } finally {
-            setIsRoadSnapping(false);
-          }
-        }
+        // Trazado directo de la secuencia de nodos de la red vial de OpenStreetMap calculada por Dijkstra
+        setRoadPolyline(resolvedSingle.polyline || []);
       } catch (err: any) {
         console.error('Error calculando ruta:', err);
         setError(err.message || 'Error al calcular el camino mínimo en el servidor.');
@@ -429,18 +411,11 @@ export const RoutesView: React.FC = () => {
                   </span>
                 </h3>
                 <div className="text-xs text-cafe-600 mt-1">
-                  {isRoadSnapping ? (
-                    <span className="text-amber-800 font-semibold inline-flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600 shrink-0" />
-                      Refinando geometría sobre ejes viales reales de OpenStreetMap...
-                    </span>
-                  ) : (
-                    <span className="text-cordillera-800 font-semibold inline-flex items-center gap-1.5 bg-cordillera-50 px-2.5 py-1 rounded-lg border border-cordillera-200">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-cordillera-600 shrink-0" />
-                      Ruta vehicular calibrada ({roadPolyline.length || singleResult.polyline.length}{' '}
-                      vértices geográficos sobre vía terrestre)
-                    </span>
-                  )}
+                  <span className="text-cordillera-800 font-semibold inline-flex items-center gap-1.5 bg-cordillera-50 px-2.5 py-1 rounded-lg border border-cordillera-200">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-cordillera-600 shrink-0" />
+                    Ruta de nodos de OpenStreetMap ({roadPolyline.length || singleResult.polyline.length}{' '}
+                    nodos viales en el camino mínimo)
+                  </span>
                 </div>
               </div>
 

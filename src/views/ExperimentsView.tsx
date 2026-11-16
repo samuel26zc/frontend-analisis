@@ -463,7 +463,7 @@ export const ExperimentsView: React.FC = () => {
             <div className="lg:col-span-7 bg-cafe-50 p-5 rounded-2xl border border-cafe-200 space-y-2">
               <h4 className="text-xs font-bold uppercase text-cafe-800 tracking-wider flex items-center gap-1.5">
                 <Cpu className="w-4 h-4 text-terracota-600" />
-                <span>Curva de Crecimiento Temporal (ms): Fuerza Bruta vs Held-Karp (k = 5..11)</span>
+                <span>Curva de Crecimiento Temporal (ms): Fuerza Bruta vs Held-Karp (k = 5..12)</span>
               </h4>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -491,8 +491,8 @@ export const ExperimentsView: React.FC = () => {
                 </ResponsiveContainer>
               </div>
               <p className="text-[11px] text-cafe-600 text-center">
-                Fuerza Bruta resuelve hasta k = 11 (7,627.07 ms) y supera el límite en k = 12 (479M permutaciones),
-                mientras Held-Karp resuelve k = 12 en 1.79 ms.
+                Fuerza Bruta O(k!) evalúa las 479,001,600 permutaciones de k = 12 en ~1.5 minutos, mientras Held-Karp
+                Θ(2ᵏ · k²) resuelve el mismo k = 12 en menos de 2 ms.
               </p>
             </div>
 
