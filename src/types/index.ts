@@ -25,6 +25,7 @@ export interface Place {
   utmX: number;
   utmY: number;
   visitDurationMinutes: number;
+  visitDurationSource?: string;
   nearestNodeId?: number;
   distanceToNodeMeters?: number;
   isExceeding500m?: boolean;

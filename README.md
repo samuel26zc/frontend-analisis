@@ -10,7 +10,7 @@ Aplicación web demostrativa de análisis de algoritmos y planificación de ruta
 - Visualización de los **42 lugares del catálogo** (12 cabeceras municipales, 15 atractivos turísticos, 8 fincas/hoteles rurales y 7 centros de acopio/trilladoras) sobre el mapa de la **Red Vial de OpenStreetMap**.
 - Estadísticas de la red descargada (**37,117 nodos** y **73,615 aristas dirigidas**, fecha de descarga `2026-11-15T13:54:01-05:00`) y de su Mayor Componente Fuertemente Conexa (**35,442 nodos** y **70,865 aristas**).
 - Estimación analítica de memoria: **Matriz de Adyacencia (10,511.65 MB)** frente a **Listas de Adyacencia (4.22 MB)** — Factor de optimización $\approx 2\,491.3\times$.
-- Asociación de lugares al nodo más cercano en coordenadas métricas **UTM Zona 18N** y reporte de los 2 atractivos situados a más de 500 m (`Valle de Cocora` a `654.6 m` y `Cascadas de Río Verde` a `571.2 m`), tratados usando directamente su nodo más cercano en la SCC y reportando la distancia.
+- Asociación de lugares al nodo más cercano en coordenadas métricas **UTM Zona 18N** y reporte de los 3 lugares situados a más de 500 m (`Valle de Cocora` a `654.6 m`, `Finca Hotel Bosques del Samán` —en el límite Quimbaya/Alcalá— a `635.8 m`, y `Cascadas de Río Verde` a `571.2 m`), tratados usando directamente su nodo más cercano en la SCC y reportando la distancia.
 
 ### 2. Módulo R2: Caminos Mínimos (Dijkstra) & Matriz Asimétrica (42 × 42)
 - Selección de origen y destino con cálculo en tiempo real mediante **Dijkstra con Cola de Prioridad** $O((V+E)\log V)$ y **Dijkstra con Búsqueda Lineal** $O(V^2)$.
@@ -27,7 +27,7 @@ Aplicación web demostrativa de análisis de algoritmos y planificación de ruta
 - Planificador de jornada de un día ($\le 11\text{ h} = 660\text{ min}$) con poda justificada de atractivos cuando se excede el límite y visualización del recorrido en el mapa **uniendo las rutas de Dijkstra entre paradas consecutivas**.
 
 ### 5. Módulo R5: Laboratorio Experimental y Tablas del Anexo
-- Ficha técnica de la máquina reportada en vivo por la JVM.
+- Ficha técnica de la máquina donde se ejecutaron las mediciones experimentales (procesador, RAM, SO, Java y Python), leída directamente desde `experiments_results.json` conforme a la Regla 1 del protocolo.
 - Tablas y gráficas generadas directamente desde los archivos de resultados experimentales del backend (`results/*.csv` y `experiments_results.json`), sin datos escritos a mano en el frontend.
 
 ---

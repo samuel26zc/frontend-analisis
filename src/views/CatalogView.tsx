@@ -144,24 +144,39 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ onNavigateTab }) => {
         />
         <MetricCard
           title="Mayor Componente (SCC)"
-          value={`${scc?.sccNodesCount?.toLocaleString() || 75} Nodos`}
-          subtitle={`Retención del ${scc?.retentionPercentageNodes || 97.4}% (${scc?.sccEdgesCount || 176} aristas)`}
+          value={scc ? `${scc.sccNodesCount.toLocaleString()} Nodos` : '—'}
+          subtitle={
+            scc
+              ? `Retención del ${scc.retentionPercentageNodes}% (${scc.sccEdgesCount.toLocaleString()} aristas)`
+              : 'Cargando componente conexa...'
+          }
           icon={<Network className="w-5 h-5" />}
           badge="Tarjan O(V+E)"
           variant="emerald"
         />
         <MetricCard
           title="Optimización en Memoria"
-          value={`${memory?.ratioMatrixToList ? memory.ratioMatrixToList.toFixed(1) : '850.7'}×`}
-          subtitle={`Listas (${memory?.listMegabytes || 1.97} MB) vs Matriz (${memory?.matrixMegabytes || 1675.8} MB)`}
+          value={memory?.ratioMatrixToList ? `${memory.ratioMatrixToList.toFixed(1)}×` : '—'}
+          subtitle={
+            memory
+              ? `Listas (${memory.listMegabytes} MB) vs Matriz (${memory.matrixMegabytes.toLocaleString()} MB)`
+              : 'Calculando consumo en JVM 64-bit...'
+          }
           icon={<Database className="w-5 h-5" />}
           badge="Ahorro RAM"
           variant="amber"
         />
         <MetricCard
-          title="Proyección Rural (> 500 m)"
-          value={`${mappingReport?.exceeding500mCount || 2} Casos`}
-          subtitle="Valle de Cocora y Cascadas de Río Verde"
+          title="Lugares > 500 m (R1.4)"
+          value={mappingReport ? `${mappingReport.exceeding500mCount} Casos` : '—'}
+          subtitle={
+            mappingReport
+              ? mappingReport.details
+                  .filter((d) => d.isExceeding500m)
+                  .map((d) => d.placeName)
+                  .join(', ') || 'Todos a ≤ 500 m de la red vial'
+              : 'Verificando distancias en UTM 18N...'
+          }
           icon={<AlertTriangle className="w-5 h-5" />}
           badge="Regla R1.4"
           variant="terracotta"
@@ -364,8 +379,14 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ onNavigateTab }) => {
 
                 {selectedPlace.treatmentNote && (
                   <p className="text-xs text-cafe-700 bg-white/80 px-3 py-2 rounded-xl border border-cafe-200/60">
-                    <strong className="text-cafe-900">Criterio de conexión vial:</strong>{' '}
+                    <strong className="text-cafe-900">Asociación a la red vial (R1.4):</strong>{' '}
                     {selectedPlace.treatmentNote}
+                  </p>
+                )}
+                {selectedPlace.visitDurationSource && (
+                  <p className="text-xs text-cafe-700 bg-white/80 px-3 py-2 rounded-xl border border-cafe-200/60">
+                    <strong className="text-cafe-900">Criterio / Fuente de permanencia:</strong>{' '}
+                    {selectedPlace.visitDurationSource}
                   </p>
                 )}
               </div>
@@ -498,11 +519,11 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ onNavigateTab }) => {
                   </span>
                 </div>
                 <div className="text-2xl font-bold font-mono text-terracota-900">
-                  {memory?.matrixMegabytes || 1675.82}{' '}
+                  {memory ? memory.matrixMegabytes.toLocaleString() : '—'}{' '}
                   <span className="text-xs font-sans font-semibold">MB</span>
                 </div>
                 <p className="text-[11px] text-terracota-800/90 leading-snug">
-                  Desperdicia más del 99.98% de la memoria en entradas sin conexión directa (∞).
+                  Desperdicia más del 99.99% de la memoria en entradas sin conexión directa (∞).
                 </p>
               </div>
 
@@ -516,12 +537,12 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ onNavigateTab }) => {
                   </span>
                 </div>
                 <div className="text-2xl font-bold font-mono text-cordillera-900">
-                  {memory?.listMegabytes || 1.97}{' '}
+                  {memory ? memory.listMegabytes : '—'}{' '}
                   <span className="text-xs font-sans font-semibold">MB</span>
                 </div>
                 <p className="text-[11px] text-cordillera-800/90 leading-snug">
                   Estructura elegida: reduce el uso de RAM en{' '}
-                  <strong>{memory?.ratioMatrixToList ? memory.ratioMatrixToList.toFixed(0) : 850} veces</strong>.
+                  <strong>{memory?.ratioMatrixToList ? memory.ratioMatrixToList.toFixed(0) : '—'} veces</strong>.
                 </p>
               </div>
             </div>
@@ -531,19 +552,20 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ onNavigateTab }) => {
               <div className="flex justify-between text-[11px] font-semibold text-cafe-800">
                 <span>Proporción de Memoria Requerida</span>
                 <span className="font-mono text-cordillera-700 font-bold">
-                  0.12% del costo matricial
+                  {memory && memory.matrixMegabytes > 0
+                    ? `${((memory.listMegabytes / memory.matrixMegabytes) * 100).toFixed(2)}% del costo matricial`
+                    : '—'}
                 </span>
               </div>
               <div className="w-full h-2.5 bg-terracota-200 rounded-full overflow-hidden flex">
                 <div
                   className="bg-cordillera-600 h-full rounded-full"
                   style={{ width: '3%' }}
-                  title="Listas de Adyacencia: 1.97 MB"
+                  title={memory ? `Listas de Adyacencia: ${memory.listMegabytes} MB` : 'Listas de Adyacencia'}
                 />
               </div>
               <p className="text-[11px] text-cafe-600 leading-relaxed pt-1">
-                {memory?.justification ||
-                  'Dado que la red vial es un grafo plano y disperso (grado promedio ~2.4 aristas por nodo), las listas de adyacencia almacenan únicamente arcos viales existentes.'}
+                {memory?.justification || 'Conecte con el servidor Spring Boot para consultar la estimación analítica exacta.'}
               </p>
             </div>
           </div>
@@ -564,38 +586,36 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ onNavigateTab }) => {
               <div className="flex justify-between items-center py-2 border-b border-cafe-100">
                 <span className="text-cafe-600 font-medium">Nodos (Red original → Mayor SCC):</span>
                 <span className="font-bold font-mono text-cafe-950">
-                  {scc?.totalNodesBefore || 77} → {scc?.sccNodesCount || 75} (
-                  {scc?.retentionPercentageNodes || 97.4}%)
+                  {scc ? `${scc.totalNodesBefore.toLocaleString()} → ${scc.sccNodesCount.toLocaleString()} (${scc.retentionPercentageNodes}%)` : '—'}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-cafe-100">
                 <span className="text-cafe-600 font-medium">Aristas (Red original → Mayor SCC):</span>
                 <span className="font-bold font-mono text-cafe-950">
-                  {scc?.totalEdgesBefore || 178} → {scc?.sccEdgesCount || 176} (
-                  {scc?.retentionPercentageEdges || 98.9}%)
+                  {scc ? `${scc.totalEdgesBefore.toLocaleString()} → ${scc.sccEdgesCount.toLocaleString()} (${scc.retentionPercentageEdges}%)` : '—'}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-cafe-100">
                 <span className="text-cafe-600 font-medium">Tiempo de ejecución CPU:</span>
                 <span className="font-bold font-mono text-cordillera-700">
-                  {scc?.executionTimeMs ?? 0.45} ms
+                  {scc ? `${scc.executionTimeMs} ms` : '—'}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-cafe-600 font-medium">Componentes conexas aisladas podadas:</span>
                 <span className="font-bold font-mono text-cafe-950">
-                  {scc ? Math.max(0, scc.totalComponents - 1) : 2} sumideros periféricos
+                  {scc ? `${Math.max(0, scc.totalComponents - 1)} componentes periféricas` : '—'}
                 </span>
               </div>
             </div>
 
             <Alert type="success" title="Garantía de Alcanzabilidad Mutua">
               {scc?.justification ||
-                'Restringir el grafo a su mayor Componente Fuertemente Conexa (SCC) garantiza matemáticamente que desde cualquier lugar turístico A sea posible ir hacia B y retornar a A sin quedar atrapado en callejones sin salida.'}
+                'Restringir el grafo a su mayor Componente Fuertemente Conexa (SCC) garantiza que desde cualquier lugar del catálogo exista camino de ida y vuelta respetando los sentidos viales.'}
             </Alert>
           </div>
 
-          {/* Tarjeta 3: Tratamiento de Lugares > 500 m (R1.4) */}
+          {/* Tarjeta 3: Lugares > 500 m (R1.4) */}
           <div className="bg-white rounded-3xl p-6 border border-cafe-200/90 shadow-md space-y-4">
             <div className="flex items-center justify-between border-b border-cafe-100 pb-3">
               <h3 className="font-serif font-bold text-cafe-950 text-lg flex items-center gap-2">
@@ -603,13 +623,13 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ onNavigateTab }) => {
                 <span>Asociación de Lugares &gt; 500 m (R1.4)</span>
               </h3>
               <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-terracota-100 text-terracota-800">
-                Proyección UTM
+                UTM Zona 18N
               </span>
             </div>
 
             <p className="text-xs text-cafe-700 leading-relaxed">
               {mappingReport?.generalTreatmentStrategy ||
-                'Cuando un atractivo natural se ubica a más de 500 metros del nodo arterial más cercano, se proyecta ortogonalmente sobre el eje vial en coordenadas métricas UTM Zona 18N y se incorpora un tramo de acceso rural.'}
+                'Para los lugares cuyo nodo más cercano en la componente fuertemente conexa queda a más de 500 m, se usa directamente dicho nodo más cercano en UTM 18N como origen o destino de las rutas y se reporta su distancia.'}
             </p>
 
             <div className="space-y-3">

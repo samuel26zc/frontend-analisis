@@ -72,37 +72,12 @@ export const ConvexHullView: React.FC = () => {
     try {
       const bench = await convexHullApi.getBenchmark([1000, 10000, 50000], 42);
       setBenchmarkResult(bench);
-    } catch {
-      setBenchmarkResult({
-        seed: 42,
-        note: 'Protocolo experimental con distribución uniforme en cuadrado acotado (JVM 21 HotSpot C2)',
-        rows: [
-          {
-            pointSet: 'Muestra Uniforme 1K (N = 1,000)',
-            n: 1000,
-            hullVertices: 14,
-            ownTimeMs: 1.45,
-            referenceTimeMs: 1.12,
-            ratio: 1.29,
-          },
-          {
-            pointSet: 'Muestra Uniforme 10K (N = 10,000)',
-            n: 10000,
-            hullVertices: 21,
-            ownTimeMs: 8.32,
-            referenceTimeMs: 6.84,
-            ratio: 1.21,
-          },
-          {
-            pointSet: 'Muestra Uniforme 50K (N = 50,000)',
-            n: 50000,
-            hullVertices: 27,
-            ownTimeMs: 38.65,
-            referenceTimeMs: 31.4,
-            ratio: 1.23,
-          },
-        ],
-      });
+    } catch (err: any) {
+      console.error('Error ejecutando benchmark contra SciPy:', err);
+      setError(
+        err?.message ||
+          'No se pudo obtener el benchmark comparativo QuickHull vs SciPy desde el servidor Backend (puerto 8080).'
+      );
     } finally {
       setLoadingBenchmark(false);
     }

@@ -472,8 +472,7 @@ export const TspView: React.FC = () => {
             {activeTab === 'itinerary' ? (
               <span>
                 Restricción estricta de jornada: <strong className="text-cafe-950">11.0 Horas (660 min)</strong>. Si la
-                suma de visitas + traslados supera el umbral, se aplica poda marginal iterativa y re-optimización con
-                Held-Karp.
+                suma de visitas + traslados supera el umbral, se poda iterativamente el atractivo con mayor duración estimada de visita y se recalcula la ruta óptima con Held-Karp.
               </span>
             ) : (
               <span>
@@ -681,14 +680,12 @@ export const TspView: React.FC = () => {
                   Heurística Voraz (Vecino Cercano)
                 </span>
                 <div className="text-2xl font-bold font-mono text-amber-950">
-                  {itineraryResult.greedyTotalMinutes
-                    ? `${(itineraryResult.greedyTotalMinutes / 60).toFixed(2)} h`
-                    : `${(itineraryResult.totalDurationHours * 1.12).toFixed(2)} h`}
+                  {(itineraryResult.greedyTotalMinutes ?? itineraryResult.totalDurationMinutes).toFixed(2)} min ({((itineraryResult.greedyTotalMinutes ?? itineraryResult.totalDurationMinutes) / 60).toFixed(2)} h)
                 </div>
                 <div className="text-xs text-cafe-600 mt-1">
                   Conducción:{' '}
                   <strong>
-                    {itineraryResult.greedyTravelMinutes ?? Math.round(itineraryResult.totalTravelMinutes * 1.25)} min
+                    {itineraryResult.greedyTravelMinutes ?? itineraryResult.totalTravelMinutes} min
                   </strong>{' '}
                   + Visitas: <strong>{itineraryResult.totalVisitMinutes} min</strong>
                 </div>
@@ -737,7 +734,7 @@ export const TspView: React.FC = () => {
               <p className="text-xs text-amber-900 leading-relaxed">
                 La selección original de <strong>{itineraryResult.initialAttractionsCount} atractivos</strong> excedía
                 el límite máximo de <strong>11 horas (660 minutos)</strong>. El planificador descartó iterativamente el
-                lugar de mayor costo marginal (suma de tiempo de visita y desvío en carretera) y recalculó la ruta
+                atractivo con mayor duración estimada de visita (<code className="font-mono">visitDurationMinutes</code>) y recalculó la ruta
                 óptima mediante <strong>Held-Karp</strong>:
               </p>
               <div className="space-y-2 pt-1">
@@ -787,7 +784,7 @@ export const TspView: React.FC = () => {
                 )}
                 orderedStopIds={[
                   itineraryResult.originPlaceId,
-                  ...itineraryResult.stops.map((s) => s.placeId),
+                  ...itineraryResult.stops.filter((s) => s.order !== 'Regreso').map((s) => s.placeId),
                 ]}
                 routePolyline={
                   itineraryRoadPolyline.length > 0
@@ -838,7 +835,9 @@ export const TspView: React.FC = () => {
                 </div>
 
                 {/* Paradas Intermedias */}
-                {itineraryResult.stops.map((stop, idx) => {
+                {itineraryResult.stops
+                  .filter((s) => s.order !== 'Regreso')
+                  .map((stop, idx) => {
                   const totalMinutesSoFar = Math.round(stop.accumulatedTimeHours * 60);
                   const endHour = 8 + Math.floor(totalMinutesSoFar / 60);
                   const endMin = totalMinutesSoFar % 60;
@@ -885,24 +884,34 @@ export const TspView: React.FC = () => {
                 })}
 
                 {/* Retorno al Origen */}
-                <div className="relative pl-6">
-                  <div className="absolute -left-[11px] top-1 w-5 h-5 rounded-full bg-cordillera-800 text-white text-[10px] font-mono font-bold flex items-center justify-center border-2 border-white shadow">
-                    ✓
-                  </div>
-                  <div className="bg-cordillera-50 p-3.5 rounded-2xl border border-cordillera-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold font-mono text-cordillera-900 uppercase">
-                        Cierre del Circuito
-                      </span>
-                      <span className="text-[11px] font-mono font-bold text-cordillera-800">
-                        Total: {itineraryResult.totalDurationHours.toFixed(2)} h (≤ 11.0 h)
-                      </span>
+                {(() => {
+                  const returnStop = itineraryResult.stops.find((s) => s.order === 'Regreso');
+                  return (
+                    <div className="relative pl-6">
+                      <div className="absolute -left-[11px] top-1 w-5 h-5 rounded-full bg-cordillera-800 text-white text-[10px] font-mono font-bold flex items-center justify-center border-2 border-white shadow">
+                        ✓
+                      </div>
+                      <div className="bg-cordillera-50 p-3.5 rounded-2xl border border-cordillera-200 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold font-mono text-cordillera-900 uppercase">
+                            Cierre del Circuito (Regreso)
+                          </span>
+                          <span className="text-[11px] font-mono font-bold text-cordillera-800">
+                            Total: {itineraryResult.totalDurationHours.toFixed(2)} h (≤ 11.0 h)
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-serif font-bold text-cordillera-950">
+                          Retorno a {itineraryResult.originPlaceName}
+                        </h4>
+                        {returnStop && (
+                          <p className="text-xs text-cordillera-800">
+                            Traslado de retorno: <strong>{returnStop.travelFromPreviousMinutes.toFixed(1)} min</strong>
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <h4 className="text-sm font-serif font-bold text-cordillera-950 mt-1">
-                      Retorno a {itineraryResult.originPlaceName}
-                    </h4>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -1006,11 +1015,11 @@ export const TspView: React.FC = () => {
                       </td>
                       <td className="p-3 text-right border-r border-cafe-100 text-cafe-700">
                         {compareResult.bruteForceTimeout
-                          ? '> 10,000 ms (Timeout)'
+                          ? '> 5 min (Timeout)'
                           : `${compareResult.bruteForceExecutionTimeMs.toFixed(2)} ms`}
                       </td>
                       <td className="p-3 text-center border-r border-cafe-100 font-sans text-cafe-600">
-                        Óptimo (si k ≤ 9)
+                        {compareResult.bruteForceTimeout ? 'No completada' : 'Óptimo Global (100%)'}
                       </td>
                       <td className="p-3 text-center text-cafe-400">0.0%</td>
                     </tr>

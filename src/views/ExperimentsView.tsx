@@ -147,10 +147,10 @@ export const ExperimentsView: React.FC = () => {
             <HardDrive className="w-5 h-5 text-terracota-600 shrink-0" />
             <div>
               <h2 className="text-lg font-serif font-bold text-cafe-950">
-                Ficha Técnica del Sistema de Ensayo (Hardware & Runtime JVM)
+                Ficha Técnica del Sistema de Ensayo (Regla 1 del Protocolo)
               </h2>
               <p className="text-xs text-cafe-600">
-                Parámetros del equipo reportados en vivo por la Máquina Virtual de Java.
+                Parámetros de hardware y versiones de Java / Python donde se ejecutaron las mediciones experimentales (<code className="font-mono">experiments_results.json</code>).
               </p>
             </div>
           </div>
@@ -199,11 +199,11 @@ export const ExperimentsView: React.FC = () => {
 
           <div className="p-4 bg-cafe-50 rounded-2xl border border-cafe-200 space-y-1">
             <span className="text-[10px] font-bold text-cafe-500 uppercase tracking-wider block">
-              Entorno Java & Cronometraje
+              Entorno Java / Python & Cronometraje
             </span>
             <p className="text-xs font-bold text-cafe-950">{data.systemInfo.javaVersion}</p>
             <span className="text-[11px] text-amber-800 font-mono font-semibold block">
-              System.nanoTime() + JIT Warmup
+              System.nanoTime() / perf_counter_ns()
             </span>
           </div>
         </div>
@@ -490,10 +490,20 @@ export const ExperimentsView: React.FC = () => {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <p className="text-[11px] text-cafe-600 text-center">
-                Fuerza Bruta O(k!) evalúa las 479,001,600 permutaciones de k = 12 en ~1.5 minutos, mientras Held-Karp
-                Θ(2ᵏ · k²) resuelve el mismo k = 12 en menos de 2 ms.
-              </p>
+              {(() => {
+                const k12 = data.r4ExactTspTimes.find((r) => r.k === 12);
+                const bfSec =
+                  k12 && !Number.isNaN(Number(k12.tiempoFuerzaBrutaMs))
+                    ? `${(Number(k12.tiempoFuerzaBrutaMs) / 1000).toFixed(1)} s`
+                    : 'el límite de 5 min';
+                const hkMs = k12 ? `${Number(k12.tiempoHeldKarpMs).toFixed(2)} ms` : '—';
+                return (
+                  <p className="text-[11px] text-cafe-600 text-center">
+                    Fuerza Bruta O(k!) evalúa las 479,001,600 permutaciones de k = 12 en {bfSec}, mientras Held-Karp
+                    Θ(2ᵏ · k²) resuelve el mismo k = 12 en {hkMs}.
+                  </p>
+                );
+              })()}
             </div>
 
             <div className="lg:col-span-5 overflow-x-auto border border-cafe-200 rounded-2xl">
